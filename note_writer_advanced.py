@@ -1,23 +1,30 @@
+"""
+Command-line daily note taker with AI analysis.
+
+This script lets user enter multiple notes in the terminal, saves them
+to a dated text file in a "Notes" directory, and sends the notes to an
+AI model for sentiment, themes, action items and motivation.
+"""
+
 import os
 from datetime import datetime
 from google import genai
 from dotenv import load_dotenv
 
-TODAY = datetime.now()
-OUTPUT_DIR = "Notes"
-FILE_NAME = f"notes_{TODAY.year}-{TODAY.month:02d}-{TODAY.day:02d}.txt"
-FILEPATH = os.path.join(OUTPUT_DIR, FILE_NAME)
-
 
 def load_credentials():
+    """Load the Gemini API key from environment variables and return it, 
+    raising an error if missing."""
     load_dotenv()
-
     api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not set in the environment.")
     return api_key
 
 
 def collect_notes():
-    """Collect notes from user until they type 'done'"""
+    """Collect notes from user until they type 'done' is entered and
+    return them as a list of strings."""
     # Create an empty list to store all notes
     notes = []
 
@@ -38,22 +45,27 @@ def collect_notes():
 
 
 def get_filename():
-    """Generate filename based on today's date"""
-    # Check Notes folder exists
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
+    """Build and return the full path for today's notes file,
+    creating the 'Notes' directory if needed."""
+    today = datetime.now()
 
-    # Create filename with today's date
-    filename = FILEPATH
+    filename = today.strftime("notes_%Y-%m-%d.txt")
 
-    return filename
+    # Output directory
+    directory = "Notes"
+    os.makedirs(directory, exist_ok=True)
+
+    return os.path.join(directory, filename)
 
 
 def save_notes(notes, filename):
-    """Save notes to a file"""
+    """Save all notes to the given file, add a dated header, one note per line, and
+    print a short summary."""
     print("\nWriting notes to file....")
 
-    with open(filename, "w") as file:
+    with open(filename, "w", encoding="utf-8") as file:
+        # Add a simple header, to make the file more readable.
+        file.write(f"# Notes for {datetime.now().strftime('%Y-%m-%d')}\n\n")
         for note in notes:
             file.write(note + "\n")
 
@@ -63,10 +75,10 @@ def save_notes(notes, filename):
 
 
 def analyze_notes(client, notes):
-    """Analyze notes"""
+    """Send notes to the AI client for analysis and print the model's feedback"""
     print("\nAI ANALYSIS OF YOUR NOTES")
     print("\nAnalyzing your notes...")
-    notes_text = ["\n".join(f"-{note}" for note in notes)]
+    notes_text = "\n".join(f"- {note}" for note in notes)
 
     prompt = f"""
             Analyze the following daily notes and provide:
@@ -81,23 +93,26 @@ def analyze_notes(client, notes):
             {notes_text}
 
              Please provide a concise, encouraging analysis.
-        """
-
-    response = client.models.generate_content(
+        """.strip()
+    try:
+        response = client.models.generate_content(
         model="gemini-2.5-flash", contents=prompt
-    )
-    print(f"\n{response.text}")
+        )
+        print(f"\n{response.text}")
+    except Exception as e:
+        print(f"\nAI analysis failed: {e}")
 
 
 def main():
-    """Main function"""
+    """Coordinate loading credentials, collecting notes, saving them and 
+    running the AI analysis workflow."""
     api_key = load_credentials()
     client = genai.Client(api_key=api_key)
     notes = collect_notes()
 
     if len(notes) > 0:  # Very first input is not 'done'
-        filename = get_filename()
-        save_notes(notes, filename)
+        filepath = get_filename()
+        save_notes(notes, filepath)
         analyze_notes(client, notes)
     else:
         print("\nNo notes to save. Exiting...")
