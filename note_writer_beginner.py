@@ -1,21 +1,28 @@
+"""
+Simple command-line note-writing tool.
+
+This script lets the user type multiple notes interactively in the terminal
+and saves them to a dated text file inside a "Notes" folder.
+Each run creates (or reuses) a file named like "note_YYYY-mm-dd.txt".
+"""
+
 from datetime import datetime
 import os
 
-# Constants
-TODAY = datetime.now()
-FILEPATH = "Notes"
-
 
 def collect_notes():
-    """Collect notes from user until they type 'done'"""
+    """
+    Collect notes from user until they type 'done' is entered and
+    return them as a list of strings.
+    '"""
     # Create an empty list to store all notes
     notes = []
 
     # Start main loop
-    print("\nEnter your notes (type 'done' when finished):")
+    print("\nEnter your notes (type 'done' when finished):\n")
 
     while True:
-        note = input("\nNote: ")
+        note = input("Note: ")
 
         # Check if user wants to finish
         if note.lower() == "done":
@@ -28,22 +35,26 @@ def collect_notes():
 
 
 def get_filename():
-    """Generate filename based on today's date"""
-    # Check Notes folder exists
-    if not os.path.exists(FILEPATH):
-        os.makedirs(FILEPATH)
+    """Return the full path for today's notes file,
+    creating the 'Notes' directory if needed"""
+    today = datetime.now()
 
     # Create filename with today's date
-    filename = f"Notes/notes_{TODAY.year}-{TODAY.month:02d}-{TODAY.day:02d}.txt"
+    filename = today.strftime("notes_%Y-%m-%d.txt")
 
-    return filename
+    # Output directory
+    directory = "Notes"
+    os.makedirs(directory, exist_ok=True)
+
+    return os.path.join(directory, filename)
 
 
 def save_notes(notes, filename):
-    """Save notes to a file"""
+    """Write all notes to the given file path, one note per line, and
+    print a short summary."""
     print("\nWriting notes to file....")
 
-    with open(filename, "w") as file:
+    with open(filename, "w", encoding="utf-8") as file:
         for note in notes:
             file.write(note + "\n")
 
@@ -53,12 +64,13 @@ def save_notes(notes, filename):
 
 
 def main():
-    """Main function"""
+    """Run the interactive not-taking workflow: collect notes,
+    save them, or exit if none are provided."""
     notes = collect_notes()
 
     if len(notes) > 0:  # Very first input is not 'done'
-        filename = get_filename()
-        save_notes(notes, filename)
+        filepath = get_filename()
+        save_notes(notes, filepath)
     else:
         print("\nNo notes to save. Exiting...")
 
